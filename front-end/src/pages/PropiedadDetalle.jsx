@@ -47,7 +47,23 @@ function PropiedadDetalle() {
             src={`https://www.google.com/maps?q=${encodeURIComponent(propiedad.ubicacion)}&output=embed`}
           ></iframe>
         </div>
+        <div className="mt-8 bg-white border rounded-xl shadow-md p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+  <div>
+    <h3 className="text-xl font-semibold text-gray-800 mb-2">¿Te interesa esta propiedad?</h3>
+    <p className="text-gray-600 text-sm">Contactanos por WhatsApp para más info o agendar una visita.</p>
+  </div>
+  <a
+    href={`https://wa.me/5492267444899?text=Hola! Estoy interesado en la propiedad: ${encodeURIComponent(propiedad.titulo)} ubicada en ${encodeURIComponent(propiedad.ubicacion)}.`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="bg-pink-600 text-white px-6 py-2 rounded-full font-medium hover:bg-pink-500 transition"
+  >
+    Consultar por WhatsApp
+  </a>
+</div>
       </div>
+
+      
       <Footer />
     </>
   );

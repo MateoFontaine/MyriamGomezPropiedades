@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.7",
+    "framer-motion": "^12.23.9",
+    "keen-slider": "^6.8.6",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.526.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -17,6 +21,7 @@
     "react-image-lightbox": "^5.1.4",
     "react-photo-gallery": "^8.0.0",
     "react-router-dom": "^7.7.1",
+    "react-scroll": "^1.9.3",
     "swiper": "^11.2.10"
   },
   "devDependencies": {

@@ -42,7 +42,7 @@ const Contacto = () => {
             <input
               type="text"
               required
-              className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full border border-gray-300 rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
           <div>
@@ -50,14 +50,14 @@ const Contacto = () => {
             <input
               type="email"
               required
-              className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full border border-gray-300 rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
           <div>
             <label className="block text-sm text-gray-700 font-medium">Teléfono</label>
             <input
               type="tel"
-              className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full border border-gray-300 rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
           <div>
@@ -65,7 +65,7 @@ const Contacto = () => {
             <textarea
               rows="4"
               required
-              className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full border border-gray-300 rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-pink-500"
             ></textarea>
           </div>
           <button
