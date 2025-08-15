@@ -36,7 +36,7 @@ function Login() {
         className="bg-white p-8 sm:p-10 rounded-lg shadow-lg w-full max-w-md space-y-6"
       >
         <div className="flex justify-center">
-          <img src={logo} alt="Logo" className="w-16 h-16" />
+          <img src={logo} alt="Logo myriam gomez" className="w-16 h-16" />
         </div>
 
         <h1 className="text-2xl font-bold text-center text-gray-800 ">Panel de Administración</h1>
