@@ -9,6 +9,7 @@ import Alquiler from "./pages/Alquiler"
 import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login"
 import { AuthGuard } from "./components/AuthGuard"
+import TestUpload from "./pages/TestUpload";
 import "./index.css"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -21,6 +22,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/ventas" element={<Ventas />} />
         <Route path="/alquiler" element={<Alquiler />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/test-upload" element={<TestUpload />} />
+
         <Route
           path="/admin-myriam-panel-78yNhd"
           element={

@@ -8,9 +8,12 @@ const CATEGORIAS = ["Casa","Departamento","Lote","Galpón","Local","PH","Cabaña
 const SERVICIOS = ["Luz","Gas","Agua","WiFi"];
 const CARACS    = ["Pileta","Parrilla","Cochera","Jardín","Amoblado","Apto mascotas"];
 
+const CLOUD_NAME   = import.meta.env.VITE_CLOUDINARY_NAME;     // ej: tu_cloud
+const UPLOAD_PRESET= import.meta.env.VITE_CLOUDINARY_PRESET;   // ej: inmo_unsigned
+const BASE_URL     = import.meta.env.VITE_API_URL ?? "http://localhost/back-end";
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const baseURL = "http://localhost/back-end";
 
   const [seccion, setSeccion] = useState("estadisticas");
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -27,13 +30,16 @@ export default function AdminDashboard() {
   const [tipo, setTipo] = useState("Venta");
   const [categoria, setCategoria] = useState("");
   const [dormitorios, setDormitorios] = useState("");
-  const [baños, setBaños] = useState("");
+  const [banios, setBanios] = useState(""); // sin ñ en estado
   const [superficie, setSuperficie] = useState("");
-  const [imagen, setImagen] = useState("");
+  const [imagen, setImagen] = useState(""); // compat: 1ra imagen (opcional)
+  const [imagenes, setImagenes] = useState([]); // << URLs Cloudinary
   const [descripcion, setDescripcion] = useState("");
   const [oportunidad, setOportunidad] = useState(false);
   const [servicios, setServicios] = useState([]);
   const [caracteristicas, setCaracteristicas] = useState([]);
+
+  const [subiendo, setSubiendo] = useState(false);
 
   useEffect(() => {
     const isAuth = localStorage.getItem("isAuthenticated");
@@ -43,7 +49,7 @@ export default function AdminDashboard() {
 
   const fetchPropiedades = async () => {
     try {
-      const res = await fetch(`${baseURL}/get_propiedades.php`);
+      const res = await fetch(`${BASE_URL}/get_propiedades.php`);
       const data = await res.json();
       setPropiedades(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -51,29 +57,37 @@ export default function AdminDashboard() {
     }
   };
 
-  const toArray = (v) => Array.isArray(v) ? v : (v ? String(v).split(",").map(s=>s.trim()).filter(Boolean) : []);
+  const toArray = (v) =>
+    Array.isArray(v) ? v : (v ? String(v).split(",").map(s=>s.trim()).filter(Boolean) : []);
   const toggleInArray = (val, arr, setter) =>
     setter(arr.includes(val) ? arr.filter(v=>v!==val) : [...arr, val]);
 
   const limpiarCampos = () => {
     setTitulo(""); setUbicacion(""); setPrecio(""); setTipo("Venta"); setCategoria("");
-    setDormitorios(""); setBaños(""); setSuperficie(""); setImagen("");
-    setDescripcion(""); setOportunidad(false); setServicios([]); setCaracteristicas([]);
+    setDormitorios(""); setBanios(""); setSuperficie(""); setImagen("");
+    setImagenes([]); setDescripcion(""); setOportunidad(false);
+    setServicios([]); setCaracteristicas([]);
     setPropiedadActual(null); setModoEdicion(false);
   };
 
   const abrirCrear = () => { limpiarCampos(); setMostrarModal(true); };
+
   const abrirEditar = (id) => {
     const p = propiedades.find(x => String(x.id)===String(id));
     if (!p) return;
     setTitulo(p.titulo||""); setUbicacion(p.ubicacion||""); setPrecio(p.precio||"");
     setTipo(p.tipo||"Venta"); setCategoria(p.categoria||"");
-    setDormitorios(p.dormitorios??""); setBaños(p.baños??""); setSuperficie(p.superficie??"");
-    setImagen(p.imagen||""); setDescripcion(p.descripcion||"");
+    setDormitorios(p.dormitorios ?? ""); setBanios(p.baños ?? ""); setSuperficie(p.superficie ?? "");
+    // imágenes: si tiene array, lo usamos; si no, tomamos la simple
+    const imgs = Array.isArray(p.imagenes) ? p.imagenes : toArray(p.imagenes);
+    setImagenes(imgs.length ? imgs : (p.imagen ? [p.imagen] : []));
+    setImagen((imgs.length ? imgs[0] : (p.imagen || "")) || "");
+    setDescripcion(p.descripcion||"");
     setOportunidad(!!Number(p.oportunidad));
     setServicios(toArray(p.servicios)); setCaracteristicas(toArray(p.caracteristicas));
     setPropiedadActual(p); setModoEdicion(true); setMostrarModal(true);
   };
+
   const cerrarModal = () => { setMostrarModal(false); limpiarCampos(); };
 
   const filtrarPor = (t) =>
@@ -88,38 +102,90 @@ export default function AdminDashboard() {
 
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar propiedad?")) return;
-    const res = await fetch(`${baseURL}/eliminar_propiedad.php?id=${id}`, { method:"DELETE" });
+    const res = await fetch(`${BASE_URL}/eliminar_propiedad.php?id=${id}`, { method:"DELETE" });
     if (!res.ok) return alert("Error al eliminar");
     setPropiedades(prev => prev.filter(p => String(p.id)!==String(id)));
   };
 
+  // ---- Cloudinary: subir archivos y retornar URLs
+  async function uploadToCloudinary(file) {
+    if (!CLOUD_NAME || !UPLOAD_PRESET) {
+      throw new Error("Faltan VITE_CLOUDINARY_NAME o VITE_CLOUDINARY_PRESET en .env");
+    }
+    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("upload_preset", UPLOAD_PRESET);
+    form.append("folder", "inmobiliaria/propiedades");
+    const res = await fetch(url, { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "Error subiendo imagen");
+    return data.secure_url;
+  }
+
+  async function onSelectImagenes(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setSubiendo(true);
+    try {
+      const urls = [];
+      for (const f of files) {
+        const u = await uploadToCloudinary(f);
+        urls.push(u);
+      }
+      const nuevas = [...imagenes, ...urls];
+      setImagenes(nuevas);
+      if (!imagen && nuevas[0]) setImagen(nuevas[0]); // compat campo simple
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSubiendo(false);
+    }
+    e.target.value = "";
+  }
+
+  function removeImagenAt(idx) {
+    const copy = [...imagenes];
+    copy.splice(idx, 1);
+    setImagenes(copy);
+    if (copy.length > 0) setImagen(copy[0]);
+    else setImagen("");
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const payload = {
       titulo, ubicacion, precio, tipo, categoria,
-      dormitorios, baños, superficie, imagen, descripcion,
-      oportunidad, servicios, caracteristicas
+      dormitorios: Number(dormitorios||0),
+      "baños": Number(banios||0),
+      superficie: String(superficie||""),
+      imagen,                 // opcional, compat con back
+      imagenes,               // << importante: multi URLs
+      descripcion,
+      oportunidad,
+      servicios,
+      caracteristicas
     };
 
     try {
       if (modoEdicion && propiedadActual?.id) {
-        // EDITAR: usamos POST (muchos hostings bloquean PUT)
-        const res = await fetch(`${baseURL}/editar_propiedad.php?id=${propiedadActual.id}`, {
+        const res = await fetch(`${BASE_URL}/editar_propiedad.php?id=${propiedadActual.id}`, {
           method:"POST",
           headers:{ "Content-Type":"application/json" },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error("No se pudo editar");
-        setPropiedades(prev => prev.map(p => String(p.id)===String(propiedadActual.id) ? { ...p, ...payload } : p));
+        // refrescamos desde server para normalizar arrays, cod, etc.
+        await fetchPropiedades();
       } else {
-        const res = await fetch(`${baseURL}/crear_propiedad.php`, {
+        const res = await fetch(`${BASE_URL}/crear_propiedad.php`, {
           method:"POST",
           headers:{ "Content-Type":"application/json" },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error("No se pudo crear");
-        const data = await res.json(); // {id, cod}
-        setPropiedades(prev => [...prev, { id: data.id, cod: data.cod, ...payload }]);
+        await fetchPropiedades();
       }
       cerrarModal();
     } catch (err) {
@@ -196,23 +262,30 @@ export default function AdminDashboard() {
             </h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {(seccion==="venta" ? ventas : alquileres).map((p)=>(
-                <PropertyCard
-                  key={p.id}
-                  id={p.id}
-                  image={p.imagen || "https://via.placeholder.com/800x450?text=Sin+imagen"}
-                  price={p.precio}
-                  title={`${p.titulo}${p.cod ? ` • COD ${p.cod}` : ""}`}
-                  address={p.ubicacion}
-                  bedrooms={p.dormitorios}
-                  bathrooms={p.baños}
-                  size={p.superficie}
-                  type={p.tipo}
-                  isAdmin
-                  onEdit={abrirEditar}
-                  onDelete={handleDelete}
-                />
-              ))}
+              {(seccion==="venta" ? ventas : alquileres).map((p)=> {
+                const firstImg =
+                  (Array.isArray(p.imagenes) && p.imagenes[0]) ||
+                  (typeof p.imagenes === "string" && p.imagenes.split(",")[0]) ||
+                  p.imagen ||
+                  "https://via.placeholder.com/800x450?text=Sin+imagen";
+                return (
+                  <PropertyCard
+                    key={p.id}
+                    id={p.id}
+                    image={firstImg}
+                    price={p.precio}
+                    title={`${p.titulo}${p.cod ? ` • COD ${p.cod}` : ""}`}
+                    address={p.ubicacion}
+                    bedrooms={p.dormitorios}
+                    bathrooms={p.baños}
+                    size={p.superficie}
+                    type={p.tipo}
+                    isAdmin
+                    onEdit={abrirEditar}
+                    onDelete={handleDelete}
+                  />
+                );
+              })}
             </div>
           </>
         )}
@@ -243,20 +316,30 @@ export default function AdminDashboard() {
               </select>
 
               <input type="number" className="border p-2 rounded w-full" placeholder="Dormitorios" value={dormitorios} onChange={e=>setDormitorios(e.target.value)} min="0" />
-              <input type="number" className="border p-2 rounded w-full" placeholder="Baños" value={baños} onChange={e=>setBaños(e.target.value)} min="0" />
+              <input type="number" className="border p-2 rounded w-full" placeholder="Baños" value={banios} onChange={e=>setBanios(e.target.value)} min="0" />
               <input type="number" className="border p-2 rounded w-full" placeholder="Superficie m²" value={superficie} onChange={e=>setSuperficie(e.target.value)} min="0" />
-              
-              <input className="border p-2 rounded w-full" placeholder="Imagen URL" value={imagen} onChange={e=>setImagen(e.target.value)} />
-              {imagen && (
-                <div className="sm:col-span-2">
-                  <img
-                    src={imagen}
-                    alt="Preview"
-                    className="w-full h-48 object-cover rounded-lg border"
-                    onError={(e)=>{ e.currentTarget.src = "https://via.placeholder.com/800x450?text=Sin+imagen"; }}
-                  />
+
+              {/* Campo imagen simple (compat / opcional) */}
+              <input className="border p-2 rounded w-full" placeholder="Imagen principal (URL opcional)" value={imagen} onChange={e=>setImagen(e.target.value)} />
+
+              {/* Uploader Cloudinary */}
+              <div className="sm:col-span-2 border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-700">Imágenes (Cloudinary)</p>
+                  {subiendo && <span className="text-xs text-gray-500">Subiendo...</span>}
                 </div>
-              )}
+                <input type="file" accept="image/*" multiple onChange={onSelectImagenes} disabled={subiendo} className="mt-2" />
+                {!!imagenes.length && (
+                  <div className="flex gap-2 flex-wrap mt-3">
+                    {imagenes.map((u, i) => (
+                      <div key={i} className="relative w-28 h-20 border rounded overflow-hidden">
+                        <img src={u} alt={`img-${i}`} className="w-full h-full object-cover" />
+                        <button type="button" onClick={()=>removeImagenAt(i)} className="absolute top-1 right-1 bg-black/60 text-white text-xs px-1 rounded">x</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Servicios */}
               <div className="sm:col-span-2 border rounded-lg p-3">
@@ -285,14 +368,25 @@ export default function AdminDashboard() {
               </div>
 
               {/* Oportunidad */}
-              <div className="sm:col-span-2 flex items-center justify-between border rounded p-3">
-                <span className="text-sm text-gray-700 font-medium">Marcar como Oportunidad</span>
-                <label className="inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only" checked={oportunidad} onChange={(e)=>setOportunidad(e.target.checked)} />
-                  <div className="w-11 h-6 bg-gray-200 rounded-full relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:h-5 after:w-5 after:rounded-full after:transition-all"
-                    style={{boxShadow:"inset 0 0 0 2px rgba(0,0,0,0.05)"}} />
-                </label>
-              </div>
+<div className="sm:col-span-2 flex items-center justify-between border rounded p-3">
+  <span className="text-sm text-gray-700 font-medium">Marcar como Oportunidad</span>
+  <label className="inline-flex items-center cursor-pointer select-none">
+    <input
+      type="checkbox"
+      className="sr-only"
+      checked={oportunidad}
+      onChange={(e) => setOportunidad(e.target.checked)}
+    />
+    <div className={`w-11 h-6 rounded-full relative transition-colors ${oportunidad ? "bg-pink-600" : "bg-gray-300"}`}>
+      <span
+        className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          oportunidad ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </div>
+  </label>
+</div>
+
 
               <div className="sm:col-span-2">
                 <textarea className="border p-2 rounded w-full resize-none" rows={4} placeholder="Descripción" value={descripcion} onChange={e=>setDescripcion(e.target.value)} />
@@ -300,7 +394,7 @@ export default function AdminDashboard() {
 
               <div className="sm:col-span-2 flex items-center justify-end gap-2">
                 <button type="button" onClick={cerrarModal} className="px-6 py-2 rounded border text-gray-700 hover:bg-gray-50">Cancelar</button>
-                <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded hover:bg-pink-500">
+                <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded hover:bg-pink-500" disabled={subiendo}>
                   {modoEdicion ? "Guardar cambios" : "Guardar Propiedad"}
                 </button>
               </div>
