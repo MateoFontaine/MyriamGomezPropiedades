@@ -13,7 +13,7 @@ function App() {
       <Header />
       <Banner />
       <CarouselOportunity />
-      <PropertyList />
+      <PropertyList /> {/* <PropertyList count={4} /> en caso de querer que se muestren solo 4 propiedaes */}
       <SobreNosotros />
       <Contacto />
       <Footer />

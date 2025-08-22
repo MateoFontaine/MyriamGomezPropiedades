@@ -124,19 +124,6 @@ export default function PropiedadDetalle() {
               </div>
             </div>
 
-            {/* Contacto (sticky, debajo del mapa) */}
-            <div className="bg-white border rounded-xl p-5  top-[calc(24px+16rem+1rem)]">
-              <h3 className="text-lg font-semibold mb-2">Contacto</h3>
-              <a
-                href={`https://wa.me/5492267444899?text=Hola! Estoy interesado en la propiedad: ${encodeURIComponent(propiedad.titulo || "")} ubicada en ${encodeURIComponent(propiedad.ubicacion || "")}.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-center bg-pink-600 text-white px-4 py-2 rounded-full font-medium hover:bg-pink-500 transition"
-              >
-                Consultar por WhatsApp
-              </a>
-            </div>
-
             {/* Ficha rápida (opcional) */}
             <div className="bg-white border rounded-xl p-5">
               <h3 className="text-lg font-semibold mb-3">Ficha rápida</h3>
@@ -151,6 +138,21 @@ export default function PropiedadDetalle() {
                 )}
               </ul>
             </div>
+
+            {/* Contacto (sticky, debajo del mapa) */}
+            <div className="bg-white border rounded-xl p-5  top-[calc(24px+16rem+1rem)]">
+              <h3 className="text-lg font-semibold mb-2">Contacto</h3>
+              <a
+                href={`https://wa.me/5492267444899?text=Hola! Estoy interesado en la propiedad: ${encodeURIComponent(propiedad.titulo || "")} ubicada en ${encodeURIComponent(propiedad.ubicacion || "")} | Codigo: ${encodeURIComponent(propiedad.cod  || "")}.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center bg-pink-600 text-white px-4 py-2 rounded-full font-medium hover:bg-pink-500 transition"
+              >
+                Consultar por WhatsApp
+              </a>
+            </div>
+
+            
           </aside>
         </div>
       </div>

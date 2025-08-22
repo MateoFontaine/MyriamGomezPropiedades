@@ -99,7 +99,7 @@ export default function Gallery({
             <button
               key={i}
               onClick={() => setIdx(i)}
-              className={`relative h-20 rounded-lg overflow-hidden transition-all ${i === idx ? "ring-2 ring-amber-800 scale-105" : "hover:scale-105"}`}
+              className={`relative h-14 rounded-lg overflow-hidden transition-all ${i === idx ? "ring-2 ring-amber-800 scale-105" : "hover:scale-105"}`}
               aria-label={`Ir a imagen ${i+1}`}
             >
               <img src={src} alt={`thumb ${i+1}`} className="w-full h-full object-cover" />

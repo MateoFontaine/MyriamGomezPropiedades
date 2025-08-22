@@ -76,6 +76,8 @@ function Footer() {
         {/* Copyright */}
         <div className="border-t border-gray-700 mt-8 pt-6 text-center text-gray-300 text-sm">
           <p>&copy; 2025 Myriam Gómez Propiedades. Todos los derechos reservados.</p>
+          <p>Hecho por <a className="text-blue-500" target="_blank"
+  href="https://instagram.com/codela.estudio">Codela</a></p>
         </div>
       </div>
     </footer>
