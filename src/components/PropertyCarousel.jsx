@@ -3,7 +3,7 @@ import PropertyCard from "./PropertyCard";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 
-const BASE = import.meta.env?.VITE_API_URL ?? "http://localhost/back-end";
+const BASE = import.meta.env?.VITE_API_URL ?? "https://codelaestudio.com/back-end";
 
 function PropertyCarousel() {
   const [propiedades, setPropiedades] = useState([]);
