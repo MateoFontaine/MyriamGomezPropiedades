@@ -12,6 +12,7 @@ import {
 import logo from "../assets/logo.png";
 import PropertyCard from "../components/PropertyCard";
 import { generatePropertyPDF } from "../utils/propertyPdf";
+import { Api } from "../utils/Api";
 
 const CATEGORIAS = [
   "Casa",
@@ -35,7 +36,6 @@ const CARACS = [
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_NAME; // ej: tu_cloud
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_PRESET; // ej: inmo_unsigned
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost/back-end";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
   const [tipo, setTipo] = useState("Venta");
   const [categoria, setCategoria] = useState("");
   const [dormitorios, setDormitorios] = useState("");
-  const [banios, setBanios] = useState(""); // sin ñ en estado
+  const [banios, setBanios] = useState(""); // sin ñ en nombre de estado
   const [superficie, setSuperficie] = useState("");
   const [imagen, setImagen] = useState(""); // principal
   const [imagenes, setImagenes] = useState([]); // URLs Cloudinary
@@ -68,14 +68,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const isAuth = localStorage.getItem("isAuthenticated");
-    if (!isAuth) navigate("/login");
+    if (!isAuth) {
+      navigate("/login");
+      return;
+    }
     fetchPropiedades();
   }, [navigate]);
 
   const fetchPropiedades = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/get_propiedades.php`);
-      const data = await res.json();
+      const data = await Api.list();
       setPropiedades(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -121,18 +123,19 @@ export default function AdminDashboard() {
   const abrirEditar = (id) => {
     const p = propiedades.find((x) => String(x.id) === String(id));
     if (!p) return;
+
     setTitulo(p.titulo || "");
     setUbicacion(p.ubicacion || "");
     setPrecio(p.precio || "");
     setTipo(p.tipo || "Venta");
     setCategoria(p.categoria || "");
     setDormitorios(p.dormitorios ?? "");
-    setBanios(p.baños ?? "");
+    setBanios(p["baños"] ?? "");
     setSuperficie(p.superficie ?? "");
 
     // imágenes: si tiene array, lo usamos; si no, tomamos la simple
     const imgs = Array.isArray(p.imagenes) ? p.imagenes : toArray(p.imagenes);
-    const mainFromDb = p.imagen || (imgs[0] || "");
+    const mainFromDb = p.imagen || imgs[0] || "";
     const ordered = mainFromDb
       ? [mainFromDb, ...imgs.filter((u) => u !== mainFromDb)]
       : imgs;
@@ -169,31 +172,34 @@ export default function AdminDashboard() {
 
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar propiedad?")) return;
-    const res = await fetch(`${BASE_URL}/eliminar_propiedad.php?id=${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) return alert("Error al eliminar");
-    setPropiedades((prev) => prev.filter((p) => String(p.id) !== String(id)));
+    try {
+      await Api.remove(id);
+      setPropiedades((prev) => prev.filter((p) => String(p.id) !== String(id)));
+    } catch (e) {
+      alert("Error al eliminar");
+    }
   };
 
   // Descargar PDF (util)
   const handleDownload = async (id) => {
-  const p = propiedades.find((x) => String(x.id) === String(id));
-  if (!p) return alert("No se encontró la propiedad.");
-  try {
-    await generatePropertyPDF(p, {
-      logoUrl: logo,                             // 👈 tu logo (asset de Vite)
-      brandName: "Myriam Gómez Inmobiliaria",   // 👈 nombre comercial
-      brandSubtitle: "Mat. CSI 1234",           // 👈 opcional
-      contact: { phone: "+54 9 2267 444899", email: "info@codela.dev", web: "codela.dev" },
-      // primary: [214,31,105],                 // 👈 si querés cambiar color principal
-    });
-  } catch (e) {
-    console.error(e);
-    alert("No se pudo generar el PDF");
-  }
-};
-
+    const p = propiedades.find((x) => String(x.id) === String(id));
+    if (!p) return alert("No se encontró la propiedad.");
+    try {
+      await generatePropertyPDF(p, {
+        logoUrl: logo,
+        brandName: "Myriam Gómez Inmobiliaria",
+        brandSubtitle: "Mat. CSI 1234",
+        contact: {
+          phone: "+54 9 2267 444899",
+          email: "info@codela.dev",
+          web: "codela.dev",
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo generar el PDF");
+    }
+  };
 
   // ---- Cloudinary: subir archivos y retornar URLs
   async function uploadToCloudinary(file) {
@@ -257,7 +263,7 @@ export default function AdminDashboard() {
     e.preventDefault();
 
     // garantizar que la principal vaya primera
-    const main = imagen || (imagenes[0] || "");
+    const main = imagen || imagenes[0] || "";
     const orderedImgs = main
       ? [main, ...imagenes.filter((u) => u !== main)]
       : [...imagenes];
@@ -281,23 +287,10 @@ export default function AdminDashboard() {
 
     try {
       if (modoEdicion && propiedadActual?.id) {
-        const res = await fetch(
-          `${BASE_URL}/editar_propiedad.php?id=${propiedadActual.id}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }
-        );
-        if (!res.ok) throw new Error("No se pudo editar");
+        await Api.update(propiedadActual.id, payload);
         await fetchPropiedades(); // refresco desde server
       } else {
-        const res = await fetch(`${BASE_URL}/crear_propiedad.php`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error("No se pudo crear");
+        await Api.create(payload);
         await fetchPropiedades();
       }
       cerrarModal();
@@ -433,13 +426,13 @@ export default function AdminDashboard() {
                     title={`${p.titulo}${p.cod ? ` • COD ${p.cod}` : ""}`}
                     address={p.ubicacion}
                     bedrooms={p.dormitorios}
-                    bathrooms={p.baños}
+                    bathrooms={p["baños"]}
                     size={p.superficie}
                     type={p.tipo}
                     isAdmin
                     onEdit={abrirEditar}
                     onDelete={handleDelete}
-                    onDownload={handleDownload} // 👈 PDF
+                    onDownload={handleDownload}
                   />
                 );
               })}
@@ -594,9 +587,7 @@ export default function AdminDashboard() {
                           >
                             <Star
                               className={
-                                esPrincipal
-                                  ? "w-4 h-4 fill-current"
-                                  : "w-4 h-4"
+                                esPrincipal ? "w-4 h-4 fill-current" : "w-4 h-4"
                               }
                             />
                           </button>
