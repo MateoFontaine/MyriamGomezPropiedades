@@ -44,7 +44,7 @@ export default function Ventas() {
   const [openCaracs, setOpenCaracs]       = useState(false);
 
   useEffect(() => {
-    fetch("https://codelaestudio.com/get_propiedades.php")
+    fetch("https://codelaestudio.com/back-end/get_propiedades.php")
       .then((r) => r.json())
       .then((data) => setPropiedades((data || []).filter((p) => p.tipo === "Venta")))
       .catch((err) => console.error("Error al cargar propiedades", err));
